@@ -6,8 +6,8 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// 🔥 Store latest session state
 let session = {
+  videoId: null,
   time: 0,
   paused: true,
   lastUpdate: Date.now()
@@ -19,7 +19,6 @@ wss.on("connection", (ws) => {
   console.log("Client connected");
   clients.push(ws);
 
-  // 🔥 Send current session to new client
   ws.send(JSON.stringify({
     type: "session",
     ...session
@@ -29,15 +28,14 @@ wss.on("connection", (ws) => {
     const data = JSON.parse(message);
 
     if (data.type === "sync") {
-      // 🔥 Update session
       session = {
-        time: data.time,
+        videoId: data.videoId || null,
+        time: data.time || 0,
         paused: data.paused,
         lastUpdate: Date.now()
       };
 
-      // 🔥 Broadcast to others
-      clients.forEach(client => {
+      clients.forEach((client) => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
           client.send(JSON.stringify({
             type: "sync",
@@ -49,7 +47,7 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("close", () => {
-    clients = clients.filter(c => c !== ws);
+    clients = clients.filter((c) => c !== ws);
   });
 });
 
@@ -57,7 +55,6 @@ app.get("/", (req, res) => {
   res.send("YT Music Sync Server Running");
 });
 
-// Render port
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log("Server running on port", PORT);
